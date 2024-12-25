@@ -125,3 +125,19 @@ func SubscribeTelemetry() error {
 	}
 	return nil
 }
+
+func SubscribeOtaUpprogress() error {
+	// 订阅ota升级消息
+	otaUpgradeHandler := func(_ mqtt.Client, d mqtt.Message) {
+		// 处理消息
+		logrus.Debug("ota upgrade message:", string(d.Payload()))
+		OtaUpgrade(d.Payload(), d.Topic())
+	}
+	topic := config.MqttConfig.OTA.SubscribeTopic
+	qos := byte(config.MqttConfig.OTA.QoS)
+	if token := SubscribeMqttClient.Subscribe(topic, qos, otaUpgradeHandler); token.Wait() && token.Error() != nil {
+		logrus.Error(token.Error())
+		return token.Error()
+	}
+	return nil
+}

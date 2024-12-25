@@ -7,7 +7,27 @@ log:
   level: debug # 默认info
   # 每个文件保存的最大行数
   maxlines: 10000
+db:
+  psql:
+    host: 192.168.6.175 # 默认localhost
+    port: 5555 # 默认5432
+    dbname: ThingsPanel
+    username: postgres
+    password: postgresThingsPanel
+    time_zone: Asia/Shanghai # 默认Asia/Shanghai
 
+    idle_conns: 5 # 空闲连接池中的最大连接数，建议为open_conns的百分之5-20之间
+    open_conns: 50 # 最大打开连接数,timescaledb默认为100,考虑到其他服务也会使用数据库，建议这里设置为50
+    # SQL日志级别 (1-静音 2-错误 3-警告 4-信息)
+    log_level: 4 # 默认1
+    # 慢SQL阈值（毫秒）。慢SQL会在sqlloglevel大于等于3时输出。
+    slow_threshold: 200 # 默认200毫秒
+
+  redis:
+    addr: 192.168.6.175:6379 # 默认localhost:6379
+    # addr: 47.92.253.145:6379 # 默认localhost:6379
+    db: 1 # 默认0
+    password: "redis"
 mqtt:
   access_address: 47.92.253.145:1883
   broker: 192.168.6.200:1883 # 默认localhost:1883
