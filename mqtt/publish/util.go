@@ -1,4 +1,4 @@
-package subscribe
+package publish
 
 import (
 	"encoding/json"

@@ -2,8 +2,9 @@ package main
 
 import (
 	"dataCollect/initialize"
+	modbus "dataCollect/internal/Modbus"
 	mqttapp "dataCollect/mqtt"
-	"dataCollect/mqtt/subscribe"
+	"dataCollect/mqtt/publish"
 	"os"
 	"os/signal"
 
@@ -18,13 +19,13 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	err = subscribe.SubscribeInit()
+	publish.CreateMqttClient()
 	if err != nil {
 		logrus.Fatal(err)
 	}
+	modbus.ModbusInit()
 
 	gracefulShutdown()
-
 }
 
 func gracefulShutdown() {
