@@ -2,11 +2,12 @@ package initialize
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type customFormatter struct {
@@ -14,21 +15,20 @@ type customFormatter struct {
 }
 
 func (*customFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	var levelColor string
 	var levelText string
 	switch entry.Level {
 	case logrus.DebugLevel:
-		levelColor, levelText = "34", "DEBUG" // 蓝色
+		levelText = "DEBUG" // 蓝色
 	case logrus.InfoLevel:
-		levelColor, levelText = "36", "INFO " // 青色
+		levelText = "INFO " // 青色
 	case logrus.WarnLevel:
-		levelColor, levelText = "33", "WARN " // 黄色
+		levelText = "WARN " // 黄色
 	case logrus.ErrorLevel:
-		levelColor, levelText = "31", "ERROR" // 红色
+		levelText = "ERROR" // 红色
 	case logrus.FatalLevel, logrus.PanicLevel:
-		levelColor, levelText = "31", "FATAL" // 红色，更重要的错误
+		levelText = "FATAL" // 红色，更重要的错误
 	default:
-		levelColor, levelText = "0", "UNKNOWN" // 默认颜色
+		levelText = "UNKNOWN" // 默认颜色
 	}
 
 	// 获取调用者信息
@@ -39,13 +39,12 @@ func (*customFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	}
 
 	// 组装格式化字符串
-	msg := fmt.Sprintf("\033[1;%sm%s\033[0m \033[4;1;%sm[%s]\033[0m \033[1;%sm[%s]\033[0m %s\n",
-		levelColor, levelText, // 日志级别，带颜色
-		levelColor, entry.Time.Format("2006-01-02 15:04:05.9999"), // 时间戳，下划线加颜色
-		levelColor, fileAndLine, // 文件名:行号，带颜色
+	msg := fmt.Sprintf("%s [%s] [%s] %s\n",
+		levelText, // 日志级别，带颜色
+		entry.Time.Format("2006-01-02 15:04:05.9999"), // 时间戳，下划线加颜色
+		fileAndLine,   // 文件名:行号，带颜色
 		entry.Message, // 日志消息
 	)
-
 	return []byte(msg), nil
 }
 func LogInIt() {
@@ -53,7 +52,7 @@ func LogInIt() {
 	// 初始化 Logrus,不创建logrus实例，直接使用包级别的函数，这样可以在项目的任何地方使用logrus，目前不考虑多日志模块的情况
 	logrus.SetReportCaller(true)
 	logrus.SetFormatter(&customFormatter{logrus.TextFormatter{
-		ForceColors:   true,
+		//ForceColors:   true,
 		FullTimestamp: true,
 	}})
 
@@ -74,6 +73,16 @@ func LogInIt() {
 		logrus.Error("Invalid log level in config, setting to default level")
 		logrus.SetLevel(logrus.InfoLevel) // 设置默认级别
 	}
+	// 设置日志输出到文件
+	currentTime := time.Now().Format("200601021504") // 格式化为年月日时分
+	logPath := filepath.Join("logs", currentTime+".log")
+	logrus.SetOutput(&lumberjack.Logger{
+		Filename:   logPath, // 日志文件路径
+		MaxSize:    20,      // 每个日志文件的最大大小，单位为MB
+		MaxBackups: 5,       // 保留旧日志文件的最大数量
+		MaxAge:     30,      // 保留旧日志文件的最大天数
+		Compress:   true,    // 是否压缩旧日志文件
+	})
 
-	log.Println("Logrus设置完成...")
+	logrus.Debug("*************************** dataCollect Init Finsh**********************")
 }

@@ -29,11 +29,11 @@ func CreateMqttClient() {
 	// 消息顺序
 	opts.SetOrderMatters(false)
 	opts.SetOnConnectHandler(func(_ mqtt.Client) {
-		logrus.Println("mqtt connect success")
+		logrus.Debug("mqtt connect success")
 	})
 	// 断线重连
 	opts.SetConnectionLostHandler(func(_ mqtt.Client, err error) {
-		logrus.Println("mqtt connect  lost: ", err)
+		logrus.Error("mqtt connect  lost: ", err)
 		mqttClient.Disconnect(250)
 		// 等待连接成功，失败重新连接
 		for {

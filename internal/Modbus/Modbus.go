@@ -36,17 +36,17 @@ var modbusClient modbus.Client
 // 定义要读取的寄存器列表
 var registers = []Register{
 	{"风速", 500, 1, handlerWindSpeed}, // 读取地址 0x0000 开始的 2 个寄存器
-	// {"风向", 503, 1, handlerWindDirection},
-	// {"湿度", 504, 1, handlerHumidity},
-	// {"温度", 505, 1, handlerTemperature},
+	{"风向", 503, 1, handlerWindDirection},
+	{"湿度", 504, 1, handlerHumidity},
+	{"温度", 505, 1, handlerTemperature},
 }
-var macAddr = "0F0F0F0F0F0F"
-var cfgID = "0e7ee1c0-41f3-a9fc-4897-b938d5895d9d"
+var macAddr = "0F0F0F0F0F0F"                       // 气象监控站的设备ID针对每个路由器都是唯一的
+var cfgID = "0e7ee1c0-41f3-a9fc-4897-b938d5895d9d" // 气象监控站的模板ID
 
 func ModbusInit() error {
 	// 创建 Modbus RTU 客户端
 	handler := modbus.NewRTUClientHandler("/dev/ttyS1")
-	handler.BaudRate = 9600
+	handler.BaudRate = 4800
 	handler.DataBits = 8
 	handler.Parity = "N"
 	handler.StopBits = 1
@@ -57,7 +57,7 @@ func ModbusInit() error {
 	// 连接 Modbus
 	err := handler.Connect()
 	if err != nil {
-		logrus.Error("Modbus 连接失败: %v", err)
+		logrus.Errorf("Modbus 连接失败: %v", err)
 		return err
 	}
 	defer handler.Close()
@@ -71,7 +71,7 @@ func ModbusInit() error {
 	return nil
 }
 func ModbusLoop() {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(10 * time.Second)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	for {
@@ -106,7 +106,7 @@ func readData() {
 	fileVale := make(map[string]interface{})
 	// 读取每个寄存器并输出结果
 	for _, reg := range registers {
-		logrus.Printf("读取 %s (地址: 0x%04X, 长度: %d)...\n", reg.Name, reg.Address, reg.Length)
+		//logrus.Printf("读取 %s (地址: 0x%04X, 长度: %d)...\n", reg.Name, reg.Address, reg.Length)
 		results, err := modbusClient.ReadHoldingRegisters(reg.Address, reg.Length)
 		if err != nil {
 			log.Printf("读取 %s 失败: %v\n", reg.Name, err)
@@ -117,11 +117,11 @@ func readData() {
 		for i := 0; i < len(results); i += 2 {
 			value, err := reg.Handler(results)
 			if err != nil {
-				logrus.Printf("解析 %s 失败: %v\n", reg.Name, err)
+				logrus.Warnf("解析 %s 失败: %v\n", reg.Name, err)
 				continue
 			}
 			fileVale[reg.Name] = value
-			logrus.Printf("  %s: %.2f\n", reg.Name, value)
+			logrus.Debugf("  %s: %.2f\n", reg.Name, value)
 		}
 	}
 	var WeatherData WeatherSt
@@ -139,7 +139,7 @@ func readData() {
 	}
 	payload, err := json.Marshal(WeatherData)
 	if err != nil {
-		logrus.Printf("json Marshal err:%v\n", err)
+		logrus.Debugf("json Marshal err:%v\n", err)
 
 	}
 	publish.PublishMessage(genTopic(), payload)

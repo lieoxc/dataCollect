@@ -1,0 +1,10 @@
+.devcontainer/
+.vscode/
+# go.mod
+# go.sum
+# configs/
+
+.idea/
+files/
+logs/
+*.exe
