@@ -5,6 +5,7 @@ import (
 	modbus "dataCollect/internal/Modbus"
 	mqttapp "dataCollect/mqtt"
 	"dataCollect/mqtt/publish"
+	"flag"
 	"os"
 	"os/signal"
 
@@ -12,7 +13,12 @@ import (
 )
 
 func main() {
-	initialize.ViperInit("./configs/conf.yml")
+	// 1. 定义命令行参数
+	var configPath string
+	flag.StringVar(&configPath, "config", "./configs/conf.yml", "Path to config file")
+	flag.Parse()
+
+	initialize.ViperInit(configPath)
 	initialize.LogInIt()
 
 	err := mqttapp.MqttInit()
