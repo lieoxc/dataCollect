@@ -25,10 +25,12 @@ type Register struct {
 
 // 定义气象站设备监控的字段
 type WeatherSt struct {
-	WindSpeed     float32 `json:"wind_speed,omitempty"`
-	WindDirection int     `json:"wind_direction,omitempty"`
-	Humidity      float32 `json:"humidity,omitempty"`
-	Temperature   float32 `json:"temperature,omitempty"`
+	WindSpeed      float32 `json:"wind_speed,omitempty"`
+	WindDirection  int     `json:"wind_direction,omitempty"`
+	Humidity       float32 `json:"humidity,omitempty"`
+	Temperature    float32 `json:"temperature,omitempty"`
+	Rainfall       float32 `json:"rainfall,omitempty"`
+	SolarRadiation float32 `json:"solarRadiation,omitempty"`
 }
 
 var modbusClient modbus.Client
@@ -39,9 +41,11 @@ var registers = []Register{
 	{"风向", 503, 1, handlerWindDirection},
 	{"湿度", 504, 1, handlerHumidity},
 	{"温度", 505, 1, handlerTemperature},
+	{"雨量", 513, 1, handlerRainfall},
+	{"太阳辐射", 515, 1, handlerSolarRadiation},
 }
 var macAddr = "0F0F0F0F0F0F"                       // 气象监控站的设备ID针对每个路由器都是唯一的
-var cfgID = "0e7ee1c0-41f3-a9fc-4897-b938d5895d9d" // 气象监控站的模板ID
+var cfgID = "964d6220-ecbf-a043-1960-85b1a2758cea" // 气象监控站的模板ID
 
 func ModbusInit() error {
 	// 创建 Modbus RTU 客户端
@@ -88,6 +92,7 @@ func ModbusLoop() {
 type RegisterSt struct {
 	CfgID string `json:"cfgID"`
 	Mac   string `json:"mac"`
+	Name  string `json:"name"`
 }
 
 func RegisterDev() {
@@ -95,6 +100,7 @@ func RegisterDev() {
 	var dev RegisterSt
 	dev.CfgID = cfgID
 	dev.Mac = macAddr
+	dev.Name = "气象监控站"
 	payload, err := json.Marshal(dev)
 	if err != nil {
 		logrus.Printf("json Marshal err:%v\n", err)
@@ -134,7 +140,11 @@ func readData() {
 		case "湿度":
 			WeatherData.Humidity, _ = value.(float32)
 		case "温度":
+			WeatherData.Rainfall, _ = value.(float32)
+		case "雨量":
 			WeatherData.Temperature, _ = value.(float32)
+		case "太阳辐射":
+			WeatherData.SolarRadiation, _ = value.(float32)
 		}
 	}
 	payload, err := json.Marshal(WeatherData)
@@ -145,7 +155,27 @@ func readData() {
 	publish.PublishMessage(genTopic(), payload)
 }
 
-// 处理温度  TODO 处理温度为负的情况
+// 处理雨量
+func handlerRainfall(data []byte) (interface{}, error) {
+	// 假设读取的是 16 位有符号整数，转换为温度值
+	if len(data) < 2 {
+		return nil, fmt.Errorf("数据长度不足")
+	}
+	value := int16(data[0])<<8 | int16(data[1])
+	return float32(value) / 10, nil // 雨量值放大了 10 倍，需要除以 10
+}
+
+// 处理太阳辐射
+func handlerSolarRadiation(data []byte) (interface{}, error) {
+	// 假设读取的是 16 位有符号整数，转换为温度值
+	if len(data) < 2 {
+		return nil, fmt.Errorf("数据长度不足")
+	}
+	value := int16(data[0])<<8 | int16(data[1])
+	return float32(value), nil // 太阳辐射返回的就是实际值
+}
+
+// 处理温度
 func handlerTemperature(data []byte) (interface{}, error) {
 	// 假设读取的是 16 位有符号整数，转换为温度值
 	if len(data) < 2 {
