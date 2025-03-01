@@ -44,7 +44,7 @@ var registers = []Register{
 	{"雨量", 513, 1, handlerRainfall},
 	{"太阳辐射", 515, 1, handlerSolarRadiation},
 }
-var macAddr = "0F0F0F0F0F0F"                       // 气象监控站的设备ID针对每个路由器都是唯一的
+var MacAddr = "0F0F0F0F0F0F"                       // 气象监控站的设备ID针对每个路由器都是唯一的
 var cfgID = "964d6220-ecbf-a043-1960-85b1a2758cea" // 气象监控站的模板ID
 
 func ModbusInit() error {
@@ -99,7 +99,14 @@ func RegisterDev() {
 	topic := "devices/register"
 	var dev RegisterSt
 	dev.CfgID = cfgID
-	dev.Mac = macAddr
+	addr, err := getMACAddress("eth0")
+	if err != nil {
+		logrus.Errorf("getMACAddresserr:%v ", err)
+	}
+	if addr != "" {
+		MacAddr = addr
+	}
+	dev.Mac = MacAddr
 	dev.Name = "气象监控站"
 	payload, err := json.Marshal(dev)
 	if err != nil {
@@ -217,7 +224,7 @@ func handlerWindSpeed(data []byte) (interface{}, error) {
 
 func genTopic() string {
 	topic := "devices/telemetry"
-	return fmt.Sprintf("%s/%s/%s", topic, cfgID, macAddr)
+	return fmt.Sprintf("%s/%s/%s", topic, cfgID, MacAddr)
 }
 func getMACAddress(interfaceName string) (string, error) {
 	//return "1C:40:E8:11:69:54", nil
