@@ -4,7 +4,6 @@ import (
 	"dataCollect/mqtt/publish"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -25,12 +24,12 @@ type Register struct {
 
 // 定义气象站设备监控的字段
 type WeatherSt struct {
-	WindSpeed      float32 `json:"wind_speed,omitempty"`
-	WindDirection  int     `json:"wind_direction,omitempty"`
-	Humidity       float32 `json:"humidity,omitempty"`
-	Temperature    float32 `json:"temperature,omitempty"`
-	Rainfall       float32 `json:"rainfall,omitempty"`
-	SolarRadiation float32 `json:"solarRadiation,omitempty"`
+	WindSpeed      float32 `json:"wind_speed"`
+	WindDirection  int     `json:"wind_direction"`
+	Humidity       float32 `json:"humidity"`
+	Temperature    float32 `json:"temperature"`
+	Rainfall       float32 `json:"rainfall"`
+	SolarRadiation float32 `json:"solarRadiation"`
 }
 
 var modbusClient modbus.Client
@@ -75,7 +74,7 @@ func ModbusInit() error {
 	return nil
 }
 func ModbusLoop() {
-	ticker := time.NewTicker(10 * time.Minute)
+	ticker := time.NewTicker(3 * time.Minute)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	for {
@@ -122,7 +121,7 @@ func readData() {
 		//logrus.Printf("读取 %s (地址: 0x%04X, 长度: %d)...\n", reg.Name, reg.Address, reg.Length)
 		results, err := modbusClient.ReadHoldingRegisters(reg.Address, reg.Length)
 		if err != nil {
-			log.Printf("读取 %s 失败: %v\n", reg.Name, err)
+			logrus.Errorf("读取 %s 失败: %v", reg.Name, err)
 			continue
 		}
 
@@ -130,12 +129,16 @@ func readData() {
 		for i := 0; i < len(results); i += 2 {
 			value, err := reg.Handler(results)
 			if err != nil {
-				logrus.Warnf("解析 %s 失败: %v\n", reg.Name, err)
+				logrus.Warnf("解析 %s 失败: %v", reg.Name, err)
 				continue
 			}
 			fileVale[reg.Name] = value
-			logrus.Debugf("  %s: %.2f\n", reg.Name, value)
+			logrus.Debugf("  %s: %v", reg.Name, value)
 		}
+	}
+	if len(fileVale) == 0 {
+		logrus.Warn("can not read any data from modbus")
+		return
 	}
 	var WeatherData WeatherSt
 	for name, value := range fileVale {
@@ -147,9 +150,9 @@ func readData() {
 		case "湿度":
 			WeatherData.Humidity, _ = value.(float32)
 		case "温度":
-			WeatherData.Rainfall, _ = value.(float32)
-		case "雨量":
 			WeatherData.Temperature, _ = value.(float32)
+		case "雨量":
+			WeatherData.Rainfall, _ = value.(float32)
 		case "太阳辐射":
 			WeatherData.SolarRadiation, _ = value.(float32)
 		}
