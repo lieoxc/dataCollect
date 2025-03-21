@@ -2,6 +2,7 @@ package main
 
 import (
 	"dataCollect/initialize"
+	"dataCollect/initialize/croninit"
 	modbus "dataCollect/internal/Modbus"
 	mqttapp "dataCollect/mqtt"
 	"dataCollect/mqtt/publish"
@@ -20,7 +21,7 @@ func main() {
 
 	initialize.ViperInit(configPath)
 	initialize.LogInIt()
-
+	croninit.CronInit()
 	err := mqttapp.MqttInit()
 	if err != nil {
 		logrus.Fatal(err)
