@@ -74,7 +74,7 @@ func ModbusInit() error {
 	return nil
 }
 func ModbusLoop() {
-	ticker := time.NewTicker(3 * time.Minute)
+	ticker := time.NewTicker(10 * time.Second)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	for {
