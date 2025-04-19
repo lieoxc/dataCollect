@@ -30,6 +30,7 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
+	initialize.RedisInit()
 	modbus.ModbusInit()
 
 	gracefulShutdown()

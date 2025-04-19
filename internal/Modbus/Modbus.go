@@ -1,6 +1,8 @@
 package modbus
 
 import (
+	"context"
+	"dataCollect/initialize"
 	"dataCollect/mqtt/publish"
 	"encoding/json"
 	"fmt"
@@ -30,6 +32,14 @@ type WeatherSt struct {
 	Temperature    float32 `json:"temperature"`
 	Rainfall       float32 `json:"rainfall"`
 	SolarRadiation float32 `json:"solarRadiation"`
+}
+
+type AtributeSt struct {
+	Latitude     string `json:"latitude"`
+	Longitude    string `json:"longitude"`
+	Signal       string `json:"signal"`
+	ModelVersion string `json:"modelVersion"`
+	Network      string `json:"network"`
 }
 
 var modbusClient modbus.Client
@@ -71,8 +81,58 @@ func ModbusInit() error {
 
 	// 进入数据读取循环
 	go ModbusLoop()
+	go attributesLoop()
 	return nil
 }
+func attributesLoop() {
+	ticker := time.NewTicker(1 * time.Minute)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	for {
+		select {
+		case <-ticker.C:
+			ReportAttributes()
+		case <-quit:
+			ticker.Stop()
+			return
+		}
+	}
+}
+func ReportAttributes() {
+	var reportSt AtributeSt
+	// 1. 获取GPS
+	dataGps, err := initialize.Redis.HGetAll(context.Background(), "gps_data").Result()
+	if err != nil {
+		logrus.Error("gps_data err:%v", err)
+	}
+	if val, ok := dataGps["latitude"]; ok {
+		reportSt.Latitude = val
+	}
+	if val, ok := dataGps["longitude"]; ok {
+		reportSt.Longitude = val
+	}
+	// 2. 获取4G
+	dataModem, err := initialize.Redis.HGetAll(context.Background(), "modem_data").Result()
+	if err != nil {
+		logrus.Error("modem_data err:%v", err)
+	}
+	if val, ok := dataModem["signal"]; ok {
+		reportSt.Signal = val
+	}
+	if val, ok := dataModem["modelVersion"]; ok {
+		reportSt.ModelVersion = val
+	}
+	if val, ok := dataModem["network"]; ok {
+		reportSt.Network = val
+	}
+	payload, err := json.Marshal(reportSt)
+	if err != nil {
+		logrus.Debugf("json Marshal err:%v\n", err)
+		return
+	}
+	publish.PublishMessage(genAttributesTopic(), payload)
+}
+
 func ModbusLoop() {
 	ticker := time.NewTicker(10 * time.Second)
 	quit := make(chan os.Signal, 1)
@@ -160,7 +220,7 @@ func readData() {
 	payload, err := json.Marshal(WeatherData)
 	if err != nil {
 		logrus.Debugf("json Marshal err:%v\n", err)
-
+		return
 	}
 	publish.PublishMessage(genTopic(), payload)
 }
@@ -227,6 +287,10 @@ func handlerWindSpeed(data []byte) (interface{}, error) {
 
 func genTopic() string {
 	topic := "devices/telemetry"
+	return fmt.Sprintf("%s/%s/%s", topic, cfgID, MacAddr)
+}
+func genAttributesTopic() string {
+	topic := "devices/attributes"
 	return fmt.Sprintf("%s/%s/%s", topic, cfgID, MacAddr)
 }
 func getMACAddress(interfaceName string) (string, error) {
