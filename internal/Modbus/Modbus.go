@@ -282,7 +282,7 @@ func handlerWindSpeed(data []byte) (interface{}, error) {
 		return nil, fmt.Errorf("数据长度不足")
 	}
 	value := int16(data[0])<<8 | int16(data[1])
-	return float32(value) / 100, nil // 温度值放大了 10 倍，需要除以 10
+	return float32(value) / 10, nil // 风速放大了 10 倍，需要除以 10
 }
 
 func genTopic() string {
