@@ -53,6 +53,7 @@ var registers = []Register{
 	{"雨量", 513, 1, handlerRainfall},
 	{"太阳辐射", 515, 1, handlerSolarRadiation},
 }
+
 var MacAddr = "0F0F0F0F0F0F"                       // 气象监控站的设备ID针对每个路由器都是唯一的
 var cfgID = "964d6220-ecbf-a043-1960-85b1a2758cea" // 气象监控站的模板ID
 
@@ -132,15 +133,35 @@ func ReportAttributes() {
 	}
 	publish.PublishMessage(genAttributesTopic(), payload)
 }
-
+func resetRainfall() error {
+	// 使用功能码 0x06 (写单个寄存器)
+	// 地址 6002H (24578 十进制)
+	// 写入值 0x5A (10 十进制)
+	_, err := modbusClient.WriteSingleRegister(24578, 90)
+	if err != nil {
+		logrus.Errorf("雨量清零失败: %v", err)
+		return err
+	}
+	logrus.Debug("resetRainfall Succeed.")
+	return nil
+}
 func ModbusLoop() {
 	ticker := time.NewTicker(10 * time.Second)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
+	count := 0
 	for {
 		select {
 		case <-ticker.C:
-			readData()
+			//readData()
+			count++
+			//定时30min 发送雨量清0
+			if count == 2 { // 10 * 180 = 1800s = 30min
+				if err := resetRainfall(); err != nil {
+					logrus.Error("雨量清零失败: ", err)
+				}
+				count = 0 // 重置计数器
+			}
 		case <-quit:
 			ticker.Stop()
 			return
