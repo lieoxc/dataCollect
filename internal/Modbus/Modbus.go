@@ -137,12 +137,8 @@ func resetRainfall() error {
 	// 使用功能码 0x06 (写单个寄存器)
 	// 地址 6002H (24578 十进制)
 	// 写入值 0x5A (10 十进制)
-	_, err := modbusClient.WriteSingleRegister(24578, 90)
-	if err != nil {
-		logrus.Errorf("雨量清零失败: %v", err)
-		return err
-	}
-	logrus.Debug("resetRainfall Succeed.")
+	modbusClient.WriteSingleRegister(24578, 90)
+	logrus.Debug("resetRainfall Send Succeed.")
 	return nil
 }
 func ModbusLoop() {
@@ -153,10 +149,10 @@ func ModbusLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			//readData()
+			readData()
 			count++
 			//定时30min 发送雨量清0
-			if count == 2 { // 10 * 180 = 1800s = 30min
+			if count == 180 { // 10 * 180 = 1800s = 30min
 				if err := resetRainfall(); err != nil {
 					logrus.Error("雨量清零失败: ", err)
 				}
