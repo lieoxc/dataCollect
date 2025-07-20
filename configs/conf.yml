@@ -1,0 +1,24 @@
+log:
+  # 0-控制台输出 1-文件输出 2-文件和控制台输出
+  adapter_type: 0
+  # 文件最多保存多少天
+  maxdays: 7
+  # 日志级别 (panic fatal error warn info debug trace)
+  level: debug # 默认info
+  # 每个文件保存的最大行数
+  maxlines: 10000
+mqtt:
+  broker: 192.168.10.1:1883 # 默认localhost:1883
+  user: root # 默认root
+  pass: toot # 默认root
+  channel_buffer_size: 10000 # 默认10000
+  write_workers: 1 # 消息队列入库线程数，默认10
+  #消息服务质量 0：消息最多传递一次，如果当时客户端不可用，则会丢失该消息。1：消息传递至少 1 次。2：消息仅传送一次。
+  # 以下主题都为默认主题
+  telemetry:
+    # devices/telemetry/control/{device_number}
+    # 如果发给协议插件，则是devices/telemetry/control/{device_id}
+    publish_topic: devices/telemetry/
+    pool_size: 10 # 消息处理线程池，默认100
+    batch_size: 100 # 默认100 最大一次批量写入数据库的数据量
+    qos: 0
