@@ -3,8 +3,10 @@ package croninit
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/robfig/cron"
@@ -32,6 +34,10 @@ func CronInit() {
 		}
 	})
 
+	c.AddFunc("0 */60 * * * *", func() {
+		logrus.Debug("Log File Clean:")
+		CleanupLogs()
+	})
 	c.Start()
 }
 
@@ -55,6 +61,50 @@ func sendHeartbeat() error {
 	if err := os.Chtimes(heartbeatFile, now, now); err != nil {
 		logrus.Errorf("更新心跳文件时间戳失败: %v", err)
 		return err
+	}
+	return nil
+}
+
+func CleanupLogs() error {
+	logDir := "/mnt/data_collect/logs"
+	cutoffTime := time.Now().AddDate(0, 0, -3) // 3天前的时间
+
+	files, err := ioutil.ReadDir(logDir)
+	if err != nil {
+		return fmt.Errorf("读取目录失败: %w", err)
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue // 跳过子目录
+		}
+
+		filename := file.Name()
+		// 检查文件扩展名
+		if filepath.Ext(filename) != ".log" {
+			continue
+		}
+
+		// 提取文件名中的时间部分（不含扩展名）
+		timePart := strings.TrimSuffix(filename, ".log")
+		if len(timePart) < 14 { // 确保至少包含日期和时间部分
+			continue
+		}
+
+		// 解析文件名中的时间
+		fileTime, err := time.Parse("2006-01-02-1504", timePart)
+		if err != nil {
+			continue // 跳过格式不匹配的文件
+		}
+
+		// 检查文件时间是否超过3天
+		if fileTime.Before(cutoffTime) {
+			filePath := filepath.Join(logDir, filename)
+			err := os.Remove(filePath)
+			if err != nil {
+				logrus.Errorf("CleanupLogs %s failed.", filePath)
+			}
+		}
 	}
 	return nil
 }
